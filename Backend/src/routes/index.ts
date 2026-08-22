@@ -5,6 +5,9 @@ import authRoutes
 
 import tripRoutes
   from "../modules/trips/trip.routes";
+  
+import stopRoutes
+  from "../modules/trips/stop.routes";
 
 const router = Router();
 
@@ -16,6 +19,11 @@ router.use(
 router.use(
   "/trips",
   tripRoutes
+);
+
+router.use(
+  "/trips",
+  stopRoutes
 );
 
 export default router;

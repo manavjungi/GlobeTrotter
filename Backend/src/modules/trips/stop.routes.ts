@@ -3,10 +3,9 @@ import { Router } from "express";
 import {
   create,
   getMine,
-  getOne,
   update,
   remove
-} from "./trip.controller";
+} from "./stop.controller";
 
 import {
   authenticate
@@ -17,27 +16,22 @@ const router = Router();
 router.use(authenticate);
 
 router.post(
-  "/",
+  "/:id/stops",
   create
 );
 
 router.get(
-  "/",
+  "/:id/stops",
   getMine
 );
 
-router.get(
-  "/:id",
-  getOne
-);
-
 router.put(
-  "/:id",
+  "/:id/stops/:stopId",
   update
 );
 
 router.delete(
-  "/:id",
+  "/:id/stops/:stopId",
   remove
 );
 
