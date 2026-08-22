@@ -12,6 +12,9 @@ import stopRoutes
 import activityRoutes
   from "../modules/trips/activity.routes";
 
+import itineraryRoutes
+  from "../modules/trips/itinerary.routes";
+
 
 const router = Router();
 
@@ -33,6 +36,11 @@ router.use(
 router.use(
   "/trips",
   activityRoutes
+);
+
+router.use(
+  "/trips",
+  itineraryRoutes
 );
 
 export default router;
