@@ -15,6 +15,9 @@ import activityRoutes
 import itineraryRoutes
   from "../modules/trips/itinerary.routes";
 
+import expenseRoutes
+  from "../modules/trips/expense.routes";
+
 
 const router = Router();
 
@@ -41,6 +44,11 @@ router.use(
 router.use(
   "/trips",
   itineraryRoutes
+);
+
+router.use(
+  "/trips",
+  expenseRoutes
 );
 
 export default router;
