@@ -48,8 +48,12 @@ export const createActivitySchema = z.object({
     .optional(),
 
   status: z
-    .string()
-    .max(50)
+    .enum([
+        "planned",
+        "completed",
+        "skipped",
+        "cancelled"
+    ])
     .default("planned"),
 
   notes: z
