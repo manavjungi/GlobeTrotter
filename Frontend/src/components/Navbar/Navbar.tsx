@@ -19,8 +19,16 @@ export function Navbar() {
           >
             Dashboard
           </NavLink>
+          <NavLink
+            to="/trips"
+            className={({ isActive }) =>
+              isActive ? "font-medium text-brand" : "text-gray-500 hover:text-brand"
+            }
+          >
+            My Trips
+          </NavLink>
           <span className="hidden text-gray-400 sm:inline">
-            {user?.firstName || user?.username || user?.email}
+            {user?.first_name || user?.username || user?.email}
           </span>
           <button
             type="button"

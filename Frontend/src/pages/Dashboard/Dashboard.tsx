@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CityCard } from "@/components/CityCard/CityCard";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
 import { ErrorMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { Loader } from "@/components/Loader/Loader";
 import { TripCard } from "@/components/TripCard/TripCard";
 import { useAuth } from "@/hooks/useAuth";
-import { getCities } from "@/services/cityApi";
 import { getTrips } from "@/services/tripApi";
-import type { City } from "@/types/city";
 import type { Trip } from "@/types/trip";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { formatDateRange } from "@/utils/date";
@@ -16,11 +13,8 @@ import { formatDateRange } from "@/utils/date";
 export function DashboardPage() {
   const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
-  const [citiesLoading, setCitiesLoading] = useState(true);
   const [tripsError, setTripsError] = useState("");
-  const [citiesError, setCitiesError] = useState("");
 
   const loadTrips = useCallback(async () => {
     setTripsLoading(true);
@@ -36,26 +30,11 @@ export function DashboardPage() {
     }
   }, []);
 
-  const loadCities = useCallback(async () => {
-    setCitiesLoading(true);
-    setCitiesError("");
-    try {
-      const result = await getCities();
-      setCities(result);
-    } catch (error) {
-      setCities([]);
-      setCitiesError(getApiErrorMessage(error) || "Unable to load destinations.");
-    } finally {
-      setCitiesLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void loadTrips();
-    void loadCities();
-  }, [loadTrips, loadCities]);
+  }, [loadTrips]);
 
-  const displayName = user?.firstName || user?.username || "traveler";
+  const displayName = user?.first_name || user?.username || "traveler";
 
   const upcomingTrips = useMemo(() => {
     const now = Date.now();
@@ -70,8 +49,8 @@ export function DashboardPage() {
   const visibleTrips = upcomingTrips.length > 0 ? upcomingTrips : trips;
 
   const nextTrip = visibleTrips[0];
-  const budgetTotal = trips.reduce((sum, trip) => sum + (trip.budget_limit ?? 0), 0);
-  const hasBudgetData = trips.some((trip) => trip.budget_limit !== null);
+  const budgetTotal = trips.reduce((sum, trip) => sum + (trip.budget ?? 0), 0);
+  const hasBudgetData = trips.some((trip) => trip.budget != null);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -94,8 +73,8 @@ export function DashboardPage() {
       <section className="mt-8">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold text-gray-800">Your trips</h2>
-          <Link to="/trips/create" className="text-sm font-medium text-brand hover:underline">
-            Plan New Trip
+          <Link to="/trips" className="text-sm font-medium text-brand hover:underline">
+            View all trips
           </Link>
         </div>
 
@@ -135,29 +114,6 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleTrips.map((trip) => (
               <TripCard key={trip.id} trip={trip} />
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-semibold text-gray-800">Popular destinations</h2>
-        {citiesLoading ? <Loader label="Loading destinations..." /> : null}
-        {!citiesLoading && citiesError ? (
-          <p className="text-sm text-gray-500">
-            Destinations will appear when city data is available from the backend.
-          </p>
-        ) : null}
-        {!citiesLoading && !citiesError && cities.length === 0 ? (
-          <EmptyState
-            title="No destinations yet"
-            description="Popular cities will show up here once the backend provides city data."
-          />
-        ) : null}
-        {!citiesLoading && !citiesError && cities.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {cities.slice(0, 8).map((city) => (
-              <CityCard key={city.id} city={city} />
             ))}
           </div>
         ) : null}
