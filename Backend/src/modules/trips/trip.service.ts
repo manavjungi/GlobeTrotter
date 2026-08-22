@@ -6,8 +6,9 @@ interface CreateTripInput {
   startDate: string;
   endDate: string;
   budget?: number;
-  currencyId?: number;
+  currency?: string;
   visibility?: string;
+  coverImageUrl?: string;
 }
 
 interface UpdateTripInput {
@@ -16,8 +17,53 @@ interface UpdateTripInput {
   startDate?: string;
   endDate?: string;
   budget?: number;
-  currencyId?: number;
+  currency?: string;
   visibility?: string;
+  coverImageUrl?: string;
+}
+
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+async function generateUniqueSlug(
+  name: string
+): Promise<string> {
+  const baseSlug = generateSlug(name);
+
+  if (!baseSlug) {
+    throw new Error(
+      "Trip name must contain valid characters"
+    );
+  }
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const result = await pool.query(
+      `
+        SELECT id
+        FROM trips
+        WHERE slug = $1
+        LIMIT 1
+      `,
+      [slug]
+    );
+
+    if (result.rows.length === 0) {
+      return slug;
+    }
+
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
 }
 
 export async function createTrip(
@@ -33,16 +79,21 @@ export async function createTrip(
     );
   }
 
+  const slug =
+    await generateUniqueSlug(input.name);
+
   const result = await pool.query(
     `
       INSERT INTO trips (
         owner_id,
         name,
+        slug,
         description,
+        cover_image_url,
         start_date,
         end_date,
         budget,
-        currency_id,
+        currency,
         visibility
       )
       VALUES (
@@ -53,18 +104,22 @@ export async function createTrip(
         $5,
         $6,
         $7,
-        $8
+        $8,
+        $9,
+        $10
       )
       RETURNING *
     `,
     [
       userId,
       input.name,
+      slug,
       input.description ?? null,
+      input.coverImageUrl ?? null,
       input.startDate,
       input.endDate,
       input.budget ?? 0,
-      input.currencyId ?? null,
+      input.currency ?? "INR",
       input.visibility ?? "private"
     ]
   );
@@ -165,13 +220,17 @@ export async function updateTrip(
     input.budget ??
     existingTrip.budget;
 
-  const currencyId =
-    input.currencyId ??
-    existingTrip.currency_id;
+  const currency =
+    input.currency ??
+    existingTrip.currency;
 
   const visibility =
     input.visibility ??
     existingTrip.visibility;
+
+  const coverImageUrl =
+    input.coverImageUrl ??
+    existingTrip.cover_image_url;
 
   if (
     new Date(endDate) <
@@ -182,29 +241,45 @@ export async function updateTrip(
     );
   }
 
+  let slug = existingTrip.slug;
+
+  if (
+    input.name &&
+    input.name !== existingTrip.name
+  ) {
+    slug =
+      await generateUniqueSlug(
+        input.name
+      );
+  }
+
   const result = await pool.query(
     `
       UPDATE trips
       SET
         name = $1,
-        description = $2,
-        start_date = $3,
-        end_date = $4,
-        budget = $5,
-        currency_id = $6,
-        visibility = $7,
+        slug = $2,
+        description = $3,
+        cover_image_url = $4,
+        start_date = $5,
+        end_date = $6,
+        budget = $7,
+        currency = $8,
+        visibility = $9,
         updated_at = NOW()
-      WHERE id = $8
-        AND owner_id = $9
+      WHERE id = $10
+        AND owner_id = $11
       RETURNING *
     `,
     [
       name,
+      slug,
       description,
+      coverImageUrl,
       startDate,
       endDate,
       budget,
-      currencyId,
+      currency,
       visibility,
       tripId,
       userId
