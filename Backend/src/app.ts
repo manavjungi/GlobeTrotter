@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 
-import { env } from "./config/env.js";
-import apiRoutes from "./routes/index.js";
+import { env } from "./config/env";
+import apiRoutes from "./routes/index";
 
 const app = express();
 

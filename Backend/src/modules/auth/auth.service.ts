@@ -1,6 +1,6 @@
 import { pool } from "../../config/database.js";
-import { hashPassword, comparePassword } from "../../utils/password.js";
-import { generateAccessToken } from "../../utils/jwt.js";
+import { hashPassword, comparePassword } from "../../utils/password";
+import { generateAccessToken } from "../../utils/jwt";
 
 interface RegisterInput {
   username: string;
@@ -191,4 +191,31 @@ export async function loginUser(
     user,
     token
   };
+}
+export async function getCurrentUser(
+  userId: number
+) {
+  const result = await pool.query(
+    `
+      SELECT
+        id,
+        username,
+        email,
+        first_name,
+        last_name,
+        phone,
+        country_id,
+        city_id,
+        role,
+        email_verified,
+        created_at
+      FROM users
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+    `,
+    [userId]
+  );
+
+  return result.rows[0] ?? null;
 }

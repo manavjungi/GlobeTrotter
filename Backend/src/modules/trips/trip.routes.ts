@@ -1,10 +1,10 @@
 import { Router } from "express";
 
 import {
-  register,
-  login,
-  me
-} from "./auth.controller";
+  create,
+  getMine,
+  getOne
+} from "./trip.controller";
 
 import {
   authenticate
@@ -12,20 +12,21 @@ import {
 
 const router = Router();
 
-router.post(
-  "/register",
-  register
-);
+router.use(authenticate);
 
 router.post(
-  "/login",
-  login
+  "/",
+  create
 );
 
 router.get(
-  "/me",
-  authenticate,
-  me
+  "/",
+  getMine
+);
+
+router.get(
+  "/:id",
+  getOne
 );
 
 export default router;
