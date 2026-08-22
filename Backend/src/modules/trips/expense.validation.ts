@@ -13,10 +13,16 @@ export const createExpenseSchema = z.object({
     .positive()
     .optional(),
 
-  category: z
-    .string()
-    .min(1)
-    .max(100),
+  category: z.enum([
+    "transport",
+    "accommodation",
+    "food",
+    "activity",
+    "shopping",
+    "visa",
+    "insurance",
+    "other"
+    ]),
 
   description: z
     .string()
