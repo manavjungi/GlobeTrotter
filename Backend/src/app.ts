@@ -9,6 +9,8 @@ import activityRoutes from "./modules/activity/activity.routes";
 import cityRoutes from "./modules/cities/city.routes";
 import activityCategoryRoutes
   from "./modules/activities/category.routes";
+import cityRoutes from "./modules/cities/city.routes";
+import countryRoutes from "./modules/countries/country.routes";
 
 const app = express();
 
@@ -46,6 +48,16 @@ app.use("/api/activities", activityRoutes);
 app.use(
   "/api/activity-categories",
   activityCategoryRoutes
+);
+
+app.use(
+  "/api/v1/cities",
+  cityRoutes
+);
+
+app.use(
+  "/api/v1/countries",
+  countryRoutes
 );
 
 app.get("/health", (_req, res) => {

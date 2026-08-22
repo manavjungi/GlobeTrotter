@@ -19,6 +19,8 @@ export async function getActivities(
     `
       SELECT
         a.id,
+        a.city_id,
+        a.category_id,
         a.name,
         a.slug,
         a.description,
@@ -33,17 +35,24 @@ export async function getActivities(
         a.website_url,
         a.is_free,
 
-        ac.id AS category_id,
+        c.name AS city_name,
+        c.slug AS city_slug,
+
         ac.name AS category_name,
         ac.icon AS category_icon
 
       FROM activities a
 
+      INNER JOIN cities c
+        ON c.id = a.city_id
+
       LEFT JOIN activity_categories ac
         ON ac.id = a.category_id
 
       WHERE
-        (
+        a.is_active = true
+
+        AND (
           $1 = ''
           OR a.name ILIKE '%' || $1 || '%'
           OR a.slug ILIKE '%' || $1 || '%'
@@ -52,12 +61,7 @@ export async function getActivities(
 
         AND (
           $2::bigint IS NULL
-          OR EXISTS (
-            SELECT 1
-            FROM city_activities ca
-            WHERE ca.activity_id = a.id
-              AND ca.city_id = $2
-          )
+          OR a.city_id = $2
         )
 
         AND (
