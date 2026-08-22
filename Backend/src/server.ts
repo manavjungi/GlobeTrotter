@@ -1,7 +1,7 @@
 import app from "./app";
 import { env } from "./config/env";
 import { checkDatabaseConnection } from "./config/database";
-import { runPendingMigrations } from "./database/migrator.js";
+import { runPendingMigrations } from "./database/migrator";
 
 async function startServer() {
   try {
