@@ -69,7 +69,7 @@ export function RegisterPage() {
         ...(lastName ? { lastName } : {}),
         ...(phone ? { phone } : {}),
       });
-      navigate("/dashboard", { replace: true });
+      navigate("/login", { replace: true, state: { notice: "Account created. Please log in." } });
     } catch (error) {
       const fieldErrors = getApiFieldErrors(error);
       const formFields: Array<keyof RegisterFormValues> = [

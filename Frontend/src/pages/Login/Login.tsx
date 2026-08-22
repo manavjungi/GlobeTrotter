@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AuthLayout, SocialLoginRow } from "@/components/AuthLayout/AuthLayout";
 import { Button } from "@/components/Button/Button";
@@ -21,8 +21,13 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [formError, setFormError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(
+    location.state && typeof location.state === "object" && "notice" in location.state
+      ? String((location.state as { notice?: string }).notice ?? "")
+      : "",
+  );
 
   const {
     register,

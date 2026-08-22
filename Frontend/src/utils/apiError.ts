@@ -41,7 +41,7 @@ export function getApiErrorMessage(error: unknown): string {
 
     if (isApiErrorBody(data)) {
       if (typeof data.message === "string" && data.message.trim().length > 0) {
-        return data.message;
+        return sanitizeApiMessage(data.message);
       }
 
       const fieldMessages = Object.values(getApiFieldErrors(error));
@@ -68,4 +68,14 @@ export function getApiErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+function sanitizeApiMessage(message: string): string {
+  if (/relation ["'].+["'] does not exist/i.test(message) || /column .+ does not exist/i.test(message)) {
+    return "Some travel data is unavailable right now. Please try again later.";
+  }
+  if (/internal server error/i.test(message)) {
+    return "We couldn't complete that request. Please try again.";
+  }
+  return message;
 }

@@ -6,9 +6,12 @@ import { ErrorMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { SearchIcon } from "@/components/Input/icons";
 import { TripCardSkeleton } from "@/components/Loader/Loader";
 import { TripCard } from "@/components/TripCard/TripCard";
+import { TripBudgetCard } from "@/components/Budget/TripBudgetCard";
 import { REGIONAL_DESTINATIONS, type RegionalCity } from "@/data/regions";
 import { useAuth } from "@/hooks/useAuth";
+import { getTripBudget } from "@/services/expenseApi";
 import { getTrips } from "@/services/tripApi";
+import type { TripBudget } from "@/contracts/api";
 import type { Trip } from "@/types/trip";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { countTripDays, formatDateRange } from "@/utils/date";
@@ -27,6 +30,7 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<CatalogFilter>("all");
   const [sortBy, setSortBy] = useState<CatalogSort>("popularity");
   const [groupBy, setGroupBy] = useState<CatalogGroup>("none");
+  const [nextTripBudget, setNextTripBudget] = useState<TripBudget | null>(null);
 
   const loadTrips = useCallback(async () => {
     setTripsLoading(true);
@@ -61,6 +65,28 @@ export function DashboardPage() {
   const nextTrip = upcomingTrips[0] ?? trips[0];
   const budgetTotal = trips.reduce((sum, trip) => sum + (trip.budget ?? 0), 0);
   const hasBudgetData = trips.some((trip) => trip.budget != null);
+
+  useEffect(() => {
+    if (!nextTrip) {
+      setNextTripBudget(null);
+      return;
+    }
+    let cancelled = false;
+    getTripBudget(nextTrip.id)
+      .then((result) => {
+        if (!cancelled) {
+          setNextTripBudget(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNextTripBudget(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nextTrip?.id]);
 
   const filteredCities = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -272,6 +298,29 @@ export function DashboardPage() {
               <p className="mt-1 text-sm text-muted">
                 {countTripDays(nextTrip.start_date, nextTrip.end_date)} days · {nextTrip.stop_count ?? 0} destinations
               </p>
+              {nextTripBudget ? (
+                <div className="mt-5">
+                  <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">Budget</p>
+                  <p className="mt-1 text-sm text-ink">
+                    {`₹${nextTripBudget.actual.total.toLocaleString("en-IN")} / ₹${nextTripBudget.allocatedBudget.toLocaleString("en-IN")}`}
+                  </p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-brand"
+                      style={{
+                        width: `${
+                          nextTripBudget.allocatedBudget > 0
+                            ? Math.min((nextTripBudget.actual.total / nextTripBudget.allocatedBudget) * 100, 100)
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    ₹{nextTripBudget.remaining.actual.toLocaleString("en-IN")} remaining
+                  </p>
+                </div>
+              ) : null}
               <Link
                 to={`/trips/${nextTrip.id}`}
                 className="mt-5 inline-flex w-fit text-sm font-semibold text-brand hover:text-brand-dark"
@@ -291,7 +340,9 @@ export function DashboardPage() {
             value={nextTrip ? nextTrip.name : "None"}
             hint={nextTrip ? formatDateRange(nextTrip.start_date, nextTrip.end_date) : undefined}
           />
-          {hasBudgetData ? (
+          {nextTripBudget ? (
+            <TripBudgetCard budget={nextTripBudget} compact />
+          ) : hasBudgetData ? (
             <HighlightCard label="Planned budget" value={`₹${budgetTotal.toLocaleString("en-IN")}`} />
           ) : (
             <HighlightCard label="Planned budget" value="—" hint="Shown when a trip has a budget." />
