@@ -2,8 +2,13 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 
+
 import { env } from "./config/env";
 import apiRoutes from "./routes/index";
+import activityRoutes from "./modules/activity/activity.routes";
+import cityRoutes from "./modules/cities/city.routes";
+import activityCategoryRoutes
+  from "./modules/activities/category.routes";
 
 const app = express();
 
@@ -33,6 +38,14 @@ app.use(
 app.use(
   "/api/v1",
   apiRoutes
+);
+
+app.use("/api/cities", cityRoutes);
+app.use("/api/activities", activityRoutes);
+
+app.use(
+  "/api/activity-categories",
+  activityCategoryRoutes
 );
 
 app.get("/health", (_req, res) => {
