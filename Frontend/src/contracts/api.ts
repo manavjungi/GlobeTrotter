@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { TransportMode, TripActivityStatus, TripStatus, TripVisibility, UserRole } from "@/types/enums";
+import {
+  ExpenseCategory,
+  TransportMode,
+  TripActivityStatus,
+  TripStatus,
+  TripVisibility,
+  UserRole,
+} from "@/types/enums";
 
 /** Postgres DATE / timestamptz → YYYY-MM-DD for date inputs and display. */
 const sqlDateSchema = z.preprocess((value) => {
@@ -111,6 +118,8 @@ export const tripStopSchema = z
     country_name: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
     transport_mode: z.enum(TransportMode).nullable().optional(),
+    transport_cost: z.coerce.number().nullable().optional(),
+    accommodation_cost: z.coerce.number().nullable().optional(),
   })
   .passthrough();
 
@@ -128,6 +137,7 @@ export const tripActivitySchema = z
     activity_name: z.string().nullable().optional(),
     city_name: z.string().nullable().optional(),
     estimated_cost: z.coerce.number().nullable().optional(),
+    actual_cost: z.coerce.number().nullable().optional(),
   })
   .passthrough();
 
@@ -172,6 +182,54 @@ export const createActivityRequestSchema = z.object({
   status: z.enum(TripActivityStatus).optional(),
 });
 
+export const catalogCitySchema = z
+  .object({
+    id: z.coerce.number(),
+    name: z.string(),
+    slug: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    short_description: z.string().nullable().optional(),
+    latitude: z.coerce.number().nullable().optional(),
+    longitude: z.coerce.number().nullable().optional(),
+    timezone: z.string().nullable().optional(),
+    image_url: z.string().nullable().optional(),
+    country_name: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const catalogCityListResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+  data: z.object({
+    cities: z.array(catalogCitySchema),
+  }),
+});
+
+export const catalogActivitySchema = z
+  .object({
+    id: z.coerce.number(),
+    name: z.string(),
+    slug: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    duration_minutes: z.coerce.number().nullable().optional(),
+    estimated_cost: z.coerce.number().nullable().optional(),
+    currency: z.string().nullable().optional(),
+    rating: z.coerce.number().nullable().optional(),
+    image_url: z.string().nullable().optional(),
+    is_free: z.boolean().nullable().optional(),
+    category_id: z.coerce.number().nullable().optional(),
+    category_name: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const catalogActivityListResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+  data: z.object({
+    activities: z.array(catalogActivitySchema),
+  }),
+});
+
 export type User = z.infer<typeof userSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
@@ -183,3 +241,86 @@ export type TripActivity = z.infer<typeof tripActivitySchema>;
 export type CreateStopRequest = z.infer<typeof createStopRequestSchema>;
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = Partial<CreateActivityRequest>;
+export type CatalogCity = z.infer<typeof catalogCitySchema>;
+export type CatalogActivity = z.infer<typeof catalogActivitySchema>;
+
+const budgetBucketSchema = z
+  .object({
+    transport: z.coerce.number().optional().default(0),
+    accommodation: z.coerce.number().optional().default(0),
+    activities: z.coerce.number().optional().default(0),
+    otherExpenses: z.coerce.number().optional().default(0),
+    total: z.coerce.number().optional().default(0),
+  })
+  .passthrough();
+
+export const tripBudgetSchema = z
+  .object({
+    currency: z.string().optional().default("INR"),
+    allocatedBudget: z.coerce.number().optional().default(0),
+    estimated: budgetBucketSchema,
+    actual: budgetBucketSchema,
+    remaining: z
+      .object({
+        estimated: z.coerce.number().optional().default(0),
+        actual: z.coerce.number().optional().default(0),
+      })
+      .passthrough(),
+    variance: z.coerce.number().optional().default(0),
+  })
+  .passthrough();
+
+export const tripBudgetResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+  data: z.object({
+    budget: tripBudgetSchema,
+  }),
+});
+
+export const expenseSchema = z
+  .object({
+    id: z.coerce.number(),
+    trip_id: z.coerce.number().optional(),
+    category: z.enum(ExpenseCategory),
+    description: z.string(),
+    amount: z.coerce.number(),
+    currency: z.string().nullable().optional(),
+    expense_date: sqlDateSchema,
+    is_estimated: z.boolean().nullable().optional(),
+    is_actual: z.boolean().nullable().optional(),
+    city_name: z.string().nullable().optional(),
+    activity_name: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const expenseListResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+  data: z.object({
+    expenses: z.array(expenseSchema),
+  }),
+});
+
+export const expenseResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+  data: z.object({
+    expense: expenseSchema,
+  }),
+});
+
+export const createExpenseRequestSchema = z.object({
+  category: z.enum(ExpenseCategory),
+  description: z.string().min(1).max(500),
+  amount: z.number().positive(),
+  currency: z.string().length(3).optional(),
+  expenseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  isEstimated: z.boolean().optional(),
+  isActual: z.boolean().optional(),
+});
+
+export type TripBudget = z.infer<typeof tripBudgetSchema>;
+export type TripExpense = z.infer<typeof expenseSchema>;
+export type CreateExpenseRequest = z.infer<typeof createExpenseRequestSchema>;
+export type UpdateExpenseRequest = Partial<CreateExpenseRequest>;

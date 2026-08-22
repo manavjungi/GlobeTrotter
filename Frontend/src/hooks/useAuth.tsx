@@ -57,9 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (payload: RegisterRequest) => {
-    const response = await registerRequest(payload);
-    setAccessToken(response.token);
-    setUser(response.user);
+    await registerRequest(payload);
   }, []);
 
   const logout = useCallback(async () => {

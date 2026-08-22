@@ -6,9 +6,11 @@ import { z } from "zod";
 import { Button } from "@/components/Button/Button";
 import { ErrorMessage, SuccessMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { AuthField, AuthTextArea } from "@/components/Input/AuthField";
+import { TripBudgetCard } from "@/components/Budget/TripBudgetCard";
 import { TripDetailsSkeleton } from "@/components/Loader/Loader";
 import { tripCoverStyle } from "@/utils/tripVisual";
-import type { Trip, TripActivity, TripStop } from "@/contracts/api";
+import type { Trip, TripActivity, TripBudget, TripExpense, TripStop } from "@/contracts/api";
+import { ExpensesPanel } from "@/pages/TripDetails/ExpensesPanel";
 import { TripActivityStatus } from "@/types/enums";
 import {
   createTripActivity,
@@ -18,8 +20,10 @@ import {
   getTripStops,
   updateTripActivity,
 } from "@/services/itineraryApi";
+import { getTripBudget, getTripExpenses } from "@/services/expenseApi";
 import { getTripById } from "@/services/tripApi";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { formatMoney } from "@/utils/money";
 import {
   countTripDays,
   formatDateRange,
@@ -71,6 +75,8 @@ export function TripDetailsPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [stops, setStops] = useState<TripStop[]>([]);
   const [activities, setActivities] = useState<TripActivity[]>([]);
+  const [budget, setBudget] = useState<TripBudget | null>(null);
+  const [expenses, setExpenses] = useState<TripExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -100,6 +106,12 @@ export function TripDetailsPage() {
       setTrip(tripResult);
       setStops(stopResult);
       setActivities(activityResult);
+      const [budgetResult, expenseResult] = await Promise.allSettled([
+        getTripBudget(numericTripId),
+        getTripExpenses(numericTripId),
+      ]);
+      setBudget(budgetResult.status === "fulfilled" ? budgetResult.value : null);
+      setExpenses(expenseResult.status === "fulfilled" ? expenseResult.value : []);
     } catch (err) {
       const message = getApiErrorMessage(err);
       if (message.toLowerCase().includes("not found")) {
@@ -356,22 +368,44 @@ export function TripDetailsPage() {
         <SummaryTile label="Duration" value={`${countTripDays(String(trip.start_date), String(trip.end_date))} days`} />
         <SummaryTile
           label="Budget"
-          value={trip.budget != null ? `₹${Number(trip.budget).toLocaleString("en-IN")}` : "—"}
+          value={
+            budget
+              ? formatMoney(budget.allocatedBudget, budget.currency)
+              : trip.budget != null
+                ? formatMoney(Number(trip.budget))
+                : "—"
+          }
         />
       </section>
+
+      {budget ? (
+        <div className="mt-6">
+          <TripBudgetCard budget={budget} />
+        </div>
+      ) : null}
 
       {stops.length > 0 ? (
         <section className="mt-8">
           <h2 className="font-display text-2xl font-semibold text-ink">Destinations</h2>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {stops.map((stop) => (
-              <li
-                key={stop.id}
-                className="rounded-lg bg-white px-3 py-2 text-sm text-ink ring-1 ring-line"
-              >
-                {stop.city_name || `City ${stop.city_id}`}
-              </li>
-            ))}
+          <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {stops.map((stop) => {
+              const stopActivities = activities.filter((activity) => activity.trip_stop_id === stop.id);
+              const activityCost = stopActivities.reduce(
+                (sum, activity) => sum + (activity.actual_cost ?? activity.estimated_cost ?? 0),
+                0,
+              );
+              const transport = stop.transport_cost ?? 0;
+              const stay = stop.accommodation_cost ?? 0;
+              return (
+                <li key={stop.id} className="rounded-xl bg-white p-4 text-sm ring-1 ring-line">
+                  <p className="font-medium text-ink">{stop.city_name || `City ${stop.city_id}`}</p>
+                  <p className="mt-2 text-muted">Transport {formatMoney(transport)}</p>
+                  <p className="text-muted">Accommodation {formatMoney(stay)}</p>
+                  <p className="text-muted">Activities {formatMoney(activityCost)}</p>
+                  <p className="mt-2 font-medium text-ink">Total {formatMoney(transport + stay + activityCost)}</p>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}
@@ -402,6 +436,10 @@ export function TripDetailsPage() {
         <div className="mt-4 space-y-4">
         {days.map((date, index) => {
           const dayActivities = activitiesByDate.get(date) ?? [];
+          const dayTotal = dayActivities.reduce(
+            (sum, activity) => sum + (activity.actual_cost ?? activity.estimated_cost ?? 0),
+            0,
+          );
           return (
             <section key={date} className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-line">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -437,6 +475,13 @@ export function TripDetailsPage() {
                           {activity.activity_name || `Activity #${activity.activity_id}`}
                         </p>
                         {activity.city_name ? <p className="mt-0.5 text-sm text-muted">{activity.city_name}</p> : null}
+                        {activity.estimated_cost != null || activity.actual_cost != null ? (
+                          <p className="mt-0.5 text-sm text-muted">
+                            {activity.actual_cost != null
+                              ? `Actual ${formatMoney(activity.actual_cost)}`
+                              : `Est. ${formatMoney(activity.estimated_cost ?? 0)}`}
+                          </p>
+                        ) : null}
                         {activity.notes ? <p className="mt-1 text-sm text-slate-600">{activity.notes}</p> : null}
                         <div className="mt-2 flex gap-3">
                           <button type="button" className="text-sm font-medium text-brand" onClick={() => openEdit(activity)}>
@@ -455,11 +500,26 @@ export function TripDetailsPage() {
                   ))}
                 </ul>
               )}
+              {dayActivities.length > 0 ? (
+                <p className="mt-4 border-t border-line pt-3 text-sm font-medium text-ink">
+                  Day total {formatMoney(dayTotal)}
+                </p>
+              ) : null}
             </section>
           );
         })}
         </div>
       </section>
+
+      <div className="mt-8 lg:max-w-3xl">
+        <ExpensesPanel
+          tripId={trip.id}
+          expenses={expenses}
+          onChanged={() => {
+            void load();
+          }}
+        />
+      </div>
 
       {formOpen ? (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-[2px]">

@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { env } from "./config/env";
 import apiRoutes from "./routes/index";
 import activityRoutes from "./modules/activity/activity.routes";
+import cityRoutes from "./modules/cities/city.routes";
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use(
   apiRoutes
 );
 
+app.use("/api/cities", cityRoutes);
 app.use("/api/activities", activityRoutes);
 
 app.get("/health", (_req, res) => {
