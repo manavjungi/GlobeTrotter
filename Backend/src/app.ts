@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 
 import { env } from "./config/env.js";
+import apiRoutes from "./routes/index.js";
 
 const app = express();
 
@@ -27,6 +28,11 @@ app.use(
   express.urlencoded({
     extended: true
   })
+);
+
+app.use(
+  "/api/v1",
+  apiRoutes
 );
 
 app.get("/health", (_req, res) => {
