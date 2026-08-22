@@ -1,12 +1,14 @@
 import app from "./app";
 import { env } from "./config/env";
 import { checkDatabaseConnection } from "./config/database";
+
 import { runPendingMigrations } from "./database/migrator";
+
 
 async function startServer() {
   try {
     await checkDatabaseConnection();
-    await runPendingMigrations();
+    // await runPendingMigrations();
 
     app.listen(env.PORT, "0.0.0.0", () => {
       console.log(

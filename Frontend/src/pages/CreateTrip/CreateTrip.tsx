@@ -8,6 +8,7 @@ import { ErrorMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { AuthField, AuthTextArea } from "@/components/Input/AuthField";
 import { Loader } from "@/components/Loader/Loader";
 import { createTrip, getTripById, updateTrip } from "@/services/tripApi";
+import { TripVisibility } from "@/types/enums";
 import type { CreateTripRequest } from "@/types/trip";
 import { getApiErrorMessage } from "@/utils/apiError";
 
@@ -54,11 +55,11 @@ function toDateInputValue(value: string): string {
   return match ? match[1] : "";
 }
 
-function asVisibility(value: string | null | undefined): CreateTripRequest["visibility"] {
-  if (value === "link_only" || value === "public" || value === "private") {
+function asVisibility(value: string | null | undefined): TripVisibility {
+  if (value === TripVisibility.LINK_ONLY || value === TripVisibility.PUBLIC || value === TripVisibility.PRIVATE) {
     return value;
   }
-  return "private";
+  return TripVisibility.PRIVATE;
 }
 
 export function CreateTripPage() {
@@ -67,7 +68,7 @@ export function CreateTripPage() {
   const isEdit = Boolean(tripId);
   const [formError, setFormError] = useState("");
   const [isLoadingTrip, setIsLoadingTrip] = useState(isEdit);
-  const [existingVisibility, setExistingVisibility] = useState<CreateTripRequest["visibility"]>("private");
+  const [existingVisibility, setExistingVisibility] = useState<TripVisibility>(TripVisibility.PRIVATE);
 
   const {
     register,
@@ -128,19 +129,19 @@ export function CreateTripPage() {
         name: values.name,
         startDate: values.startDate,
         endDate: values.endDate,
-        visibility: isEdit ? existingVisibility : "private",
+        visibility: isEdit ? existingVisibility : TripVisibility.PRIVATE,
         ...(trimmedDescription ? { description: trimmedDescription } : {}),
         ...(trimmedBudget === "" ? {} : { budget: Number(trimmedBudget) }),
       };
 
       if (isEdit && tripId) {
         await updateTrip(Number(tripId), payload);
-        navigate("/trips", { replace: true });
+        navigate("/trips", { replace: true, state: { notice: "Trip updated successfully." } });
         return;
       }
 
       const trip = await createTrip(payload);
-      navigate(`/trips/${trip.id}`, { replace: true });
+      navigate(`/trips/${trip.id}`, { replace: true, state: { notice: "Trip created successfully." } });
     } catch (error) {
       setFormError(
         getApiErrorMessage(error) ||
@@ -151,31 +152,55 @@ export function CreateTripPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-medium text-brand">
-        <Link to="/trips" className="hover:underline">
+      <p className="text-sm text-muted">
+        <Link to="/trips" className="text-brand hover:underline">
           My Trips
         </Link>
-        <span className="text-gray-400">{isEdit ? " / Edit trip" : " / Create trip"}</span>
+        <span>{isEdit ? " / Edit trip" : " / Create trip"}</span>
       </p>
-      <h1 className="mt-2 text-3xl font-semibold text-gray-800">
-        {isEdit ? "Edit Trip" : "Create Trip"}
+      <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
+        {isEdit ? "Edit your trip" : "Create your trip"}
       </h1>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-muted">
         {isEdit
           ? "Update the trip details. Cities, stops, and activities are managed later."
-          : "Set up the trip first. Cities, stops, and activities can be added later."}
+          : "Start with the basics. You can build your itinerary next."}
       </p>
+      {!isEdit ? (
+        <ol className="mt-5 flex flex-wrap items-center gap-3 text-xs text-muted" aria-label="Planning progress">
+          <li className="flex items-center gap-2 font-semibold text-brand">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] text-white">
+              1
+            </span>
+            Trip details
+          </li>
+          <li aria-hidden="true">→</li>
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] text-ink">
+              2
+            </span>
+            Destinations
+          </li>
+          <li aria-hidden="true">→</li>
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] text-ink">
+              3
+            </span>
+            Itinerary
+          </li>
+        </ol>
+      ) : null}
 
       {isLoadingTrip ? <Loader label="Loading trip..." /> : null}
 
       {!isLoadingTrip ? (
       <form
-        className="mt-8 space-y-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-brand-soft/60 sm:p-8"
+        className="mt-8 space-y-6 rounded-2xl bg-white p-6 shadow-[var(--shadow-card)] ring-1 ring-line sm:p-8"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Trip information</h2>
+          <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Trip information</h2>
           <AuthField
             label="Trip Name"
             placeholder="Summer in Japan"
@@ -206,7 +231,7 @@ export function CreateTripPage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Budget</h2>
+          <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Budget</h2>
           <AuthField
             label="Budget Limit"
             type="number"
@@ -224,7 +249,7 @@ export function CreateTripPage() {
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link
             to="/trips"
-            className="inline-flex h-12 items-center justify-center rounded-md border border-brand-soft px-6 text-sm font-medium text-gray-600 hover:bg-brand-wash"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-line px-6 text-sm font-medium text-ink hover:bg-slate-50"
           >
             Cancel
           </Link>

@@ -1,13 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { z } from "zod";
 import { Button } from "@/components/Button/Button";
-import { ErrorMessage } from "@/components/ErrorMessage/ErrorMessage";
+import { ErrorMessage, SuccessMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { AuthField, AuthTextArea } from "@/components/Input/AuthField";
-import { Loader } from "@/components/Loader/Loader";
+import { TripDetailsSkeleton } from "@/components/Loader/Loader";
+import { tripCoverStyle } from "@/utils/tripVisual";
 import type { Trip, TripActivity, TripStop } from "@/contracts/api";
+import { TripActivityStatus } from "@/types/enums";
 import {
   createTripActivity,
   createTripStop,
@@ -18,7 +20,13 @@ import {
 } from "@/services/itineraryApi";
 import { getTripById } from "@/services/tripApi";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { formatDateRange, formatLongDate, formatTimeRange, listTripDays, toTimeInput } from "@/utils/date";
+import {
+  countTripDays,
+  formatDateRange,
+  formatDayStamp,
+  listTripDays,
+  toTimeInput,
+} from "@/utils/date";
 
 const activityFormSchema = z
   .object({
@@ -53,7 +61,12 @@ type StopFormValues = z.infer<typeof stopFormSchema>;
 
 export function TripDetailsPage() {
   const { tripId } = useParams();
+  const location = useLocation();
   const numericTripId = Number(tripId);
+  const notice =
+    location.state && typeof location.state === "object" && "notice" in location.state
+      ? String((location.state as { notice?: string }).notice ?? "")
+      : "";
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [stops, setStops] = useState<TripStop[]>([]);
@@ -206,7 +219,7 @@ export function TripDetailsPage() {
       ...(values.startTime ? { startTime: values.startTime } : {}),
       ...(values.endTime ? { endTime: values.endTime } : {}),
       ...(values.notes.trim() ? { notes: values.notes.trim() } : {}),
-      status: "planned",
+      status: TripActivityStatus.PLANNED,
       estimatedCost: 0,
     };
 
@@ -258,7 +271,7 @@ export function TripDetailsPage() {
   }
 
   if (isLoading) {
-    return <Loader label="Loading trip..." />;
+    return <TripDetailsSkeleton />;
   }
 
   if (notFound) {
@@ -294,30 +307,38 @@ export function TripDetailsPage() {
   const destinationNames = [...new Set(stops.map((stop) => stop.city_name).filter(Boolean))];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-medium text-brand">
-        <Link to="/trips" className="hover:underline">
-          My Trips
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <p className="text-sm text-muted">
+        <Link to="/trips" className="text-brand hover:underline">
+          ← My Trips
         </Link>
-        <span className="text-gray-400"> / Trip details</span>
       </p>
+      {notice ? (
+        <div className="mt-4">
+          <SuccessMessage message={notice} />
+        </div>
+      ) : null}
 
-      <header className="mt-3 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-brand-soft/60">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <header className="relative mt-3 overflow-hidden rounded-3xl px-6 py-12 text-white sm:px-10">
+        <div className="absolute inset-0" style={tripCoverStyle(trip.name)} />
+        <div className="trip-cover-texture absolute inset-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-gray-800">{trip.name}</h1>
-            <p className="mt-2 text-sm text-gray-500">{formatDateRange(String(trip.start_date), String(trip.end_date))}</p>
+            <h1 className="font-display text-4xl font-semibold sm:text-5xl">{trip.name}</h1>
             {destinationNames.length > 0 ? (
-              <p className="mt-1 text-sm text-gray-500">{destinationNames.join(" · ")}</p>
+              <p className="mt-2 text-sm text-white/85">{destinationNames.join(" · ")}</p>
             ) : (
-              <p className="mt-1 text-sm text-gray-400">No destinations added yet.</p>
+              <p className="mt-2 text-sm text-white/70">No destinations added yet.</p>
             )}
-            <p className="mt-2 text-sm text-gray-500">{days.length} {days.length === 1 ? "day" : "days"}</p>
-            {trip.description ? <p className="mt-3 text-sm text-gray-600">{trip.description}</p> : null}
+            <p className="mt-2 text-sm text-white/80">
+              {formatDateRange(String(trip.start_date), String(trip.end_date))} · {days.length}{" "}
+              {days.length === 1 ? "day" : "days"}
+            </p>
           </div>
           <Link
             to={`/trips/${trip.id}/edit`}
-            className="inline-flex h-11 items-center justify-center rounded-md border border-brand-soft px-4 text-sm font-medium text-gray-700"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-white px-4 text-sm font-semibold text-ink"
           >
             Edit trip
           </Link>
@@ -326,9 +347,38 @@ export function TripDetailsPage() {
 
       {formError ? <div className="mt-4"><ErrorMessage message={formError} /></div> : null}
 
+      <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SummaryTile
+          label="Destinations"
+          value={String(stops.length)}
+          hint={destinationNames.length > 0 ? destinationNames.join(" · ") : "None added yet"}
+        />
+        <SummaryTile label="Duration" value={`${countTripDays(String(trip.start_date), String(trip.end_date))} days`} />
+        <SummaryTile
+          label="Budget"
+          value={trip.budget != null ? `₹${Number(trip.budget).toLocaleString("en-IN")}` : "—"}
+        />
+      </section>
+
+      {stops.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="font-display text-2xl font-semibold text-ink">Destinations</h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {stops.map((stop) => (
+              <li
+                key={stop.id}
+                className="rounded-lg bg-white px-3 py-2 text-sm text-ink ring-1 ring-line"
+              >
+                {stop.city_name || `City ${stop.city_id}`}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {stops.length === 0 ? (
-        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-brand-soft/60">
-          <h2 className="text-lg font-semibold text-gray-800">Add a destination</h2>
+        <section className="mt-8 rounded-2xl bg-white p-6 shadow-[var(--shadow-card)] ring-1 ring-line">
+          <h2 className="font-display text-xl font-semibold text-ink">Add a destination</h2>
           <p className="mt-2 text-sm text-gray-500">
             Activities must belong to a trip stop. There is no city search API yet, so enter a city ID from the seeded
             cities table.
@@ -346,49 +396,49 @@ export function TripDetailsPage() {
         </section>
       ) : null}
 
-      <section className="mt-8 space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800">Itinerary</h2>
+      <section className="mt-8 lg:max-w-3xl">
+        <h2 className="font-display text-2xl font-semibold text-ink">Itinerary</h2>
+        <p className="mt-1 text-sm text-muted">Where you need to be, and when.</p>
+        <div className="mt-4 space-y-4">
         {days.map((date, index) => {
           const dayActivities = activitiesByDate.get(date) ?? [];
           return (
-            <section key={date} className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-brand-soft/60">
+            <section key={date} className="rounded-2xl bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-line">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">Day {index + 1}</h3>
-                  <p className="text-sm text-gray-500">{formatLongDate(date)}</p>
+                  <p className="text-[11px] font-semibold tracking-[0.16em] text-brand uppercase">Day {index + 1}</p>
+                  <h3 className="mt-1 font-display text-xl font-semibold text-ink">{formatDayStamp(date)}</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => openCreate(date)}
                   disabled={stops.length === 0}
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-white disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-white transition duration-150 hover:bg-brand-dark disabled:opacity-50"
                 >
                   Add Activity
                 </button>
               </div>
 
               {dayActivities.length === 0 ? (
-                <p className="mt-4 text-sm text-gray-500">No activities planned for this day.</p>
+                <div className="mt-4 rounded-xl bg-slate-50 px-4 py-5">
+                  <p className="text-sm font-medium text-ink">No plans for this day yet.</p>
+                  <p className="mt-1 text-sm text-muted">Start building your itinerary.</p>
+                </div>
               ) : (
-                <ul className="mt-4 space-y-3">
+                <ul className="relative mt-5 before:absolute before:top-2 before:bottom-3 before:left-[4.35rem] before:w-px before:bg-line">
                   {dayActivities.map((activity) => (
-                    <li key={activity.id} className="rounded-2xl border border-brand-soft/70 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {activity.activity_name || `Activity #${activity.activity_id}`}
-                          </p>
-                          {activity.city_name ? (
-                            <p className="mt-1 text-sm text-gray-500">{activity.city_name}</p>
-                          ) : null}
-                          {formatTimeRange(activity.start_time, activity.end_time) ? (
-                            <p className="mt-1 text-sm text-gray-500">
-                              {formatTimeRange(activity.start_time, activity.end_time)}
-                            </p>
-                          ) : null}
-                          {activity.notes ? <p className="mt-2 text-sm text-gray-600">{activity.notes}</p> : null}
-                        </div>
-                        <div className="flex gap-3">
+                    <li key={activity.id} className="relative flex gap-4 py-3 first:pt-0">
+                      <div className="w-14 shrink-0 pt-0.5 text-xs font-semibold text-brand">
+                        {toTimeInput(activity.start_time) || "—"}
+                      </div>
+                      <span className="relative z-10 mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand ring-4 ring-white" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-ink">
+                          {activity.activity_name || `Activity #${activity.activity_id}`}
+                        </p>
+                        {activity.city_name ? <p className="mt-0.5 text-sm text-muted">{activity.city_name}</p> : null}
+                        {activity.notes ? <p className="mt-1 text-sm text-slate-600">{activity.notes}</p> : null}
+                        <div className="mt-2 flex gap-3">
                           <button type="button" className="text-sm font-medium text-brand" onClick={() => openEdit(activity)}>
                             Edit
                           </button>
@@ -408,13 +458,14 @@ export function TripDetailsPage() {
             </section>
           );
         })}
+        </div>
       </section>
 
       {formOpen ? (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6" role="dialog" aria-modal="true">
-            <h2 className="text-lg font-semibold text-gray-800">{editing ? "Edit activity" : "Add activity"}</h2>
-            <p className="mt-2 text-xs text-gray-500">
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-[2px]">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-[var(--shadow-hover)]" role="dialog" aria-modal="true">
+            <h2 className="font-display text-xl font-semibold text-ink">{editing ? "Edit activity" : "Add activity"}</h2>
+            <p className="mt-2 text-xs text-muted">
               Activities are stored against a trip stop and a catalog activity ID. Name/location labels are for your
               reference; persistence uses stop + catalog IDs.
             </p>
@@ -457,7 +508,7 @@ export function TripDetailsPage() {
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  className="rounded-md border border-gray-200 px-4 py-2 text-sm"
+                  className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-slate-50"
                   onClick={() => {
                     setFormOpen(false);
                     setEditing(null);
@@ -475,14 +526,14 @@ export function TripDetailsPage() {
       ) : null}
 
       {pendingDelete ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6" role="dialog" aria-modal="true">
-            <h2 className="text-lg font-semibold text-gray-800">Delete this activity?</h2>
-            <p className="mt-2 text-sm text-gray-500">This action cannot be undone.</p>
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[var(--shadow-hover)]" role="dialog" aria-modal="true">
+            <h2 className="font-display text-xl font-semibold text-ink">Delete this activity?</h2>
+            <p className="mt-2 text-sm text-muted">This action cannot be undone.</p>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                className="rounded-md border border-gray-200 px-4 py-2 text-sm"
+                className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-slate-50"
                 onClick={() => setPendingDelete(null)}
               >
                 Cancel
@@ -493,7 +544,7 @@ export function TripDetailsPage() {
                 onClick={() => {
                   void confirmDelete();
                 }}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
@@ -501,6 +552,24 @@ export function TripDetailsPage() {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">{label}</p>
+      <p className="mt-1 font-display text-xl font-semibold text-ink">{value}</p>
+      {hint ? <p className="mt-1 line-clamp-1 text-xs text-muted">{hint}</p> : null}
     </div>
   );
 }

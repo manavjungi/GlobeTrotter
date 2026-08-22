@@ -3,7 +3,7 @@ import { Navbar } from "@/components/Navbar/Navbar";
 
 export function AppShell() {
   return (
-    <div className="min-h-screen bg-[#f4f8fb]">
+    <div className="min-h-screen bg-[#f4f7fb]">
       <Navbar />
       <Outlet />
     </div>
