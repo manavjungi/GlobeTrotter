@@ -13,7 +13,7 @@ export async function getTripItinerary(
       SELECT
         t.id,
         t.owner_id,
-        t.title,
+        t.name,
         t.description,
         t.start_date,
         t.end_date,
@@ -306,7 +306,7 @@ export async function getTripItinerary(
   return {
     trip: {
       id: trip.id,
-      title: trip.title,
+      title: trip.name,
       description: trip.description,
       startDate: trip.start_date,
       endDate: trip.end_date,

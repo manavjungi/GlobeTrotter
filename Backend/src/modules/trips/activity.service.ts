@@ -1,5 +1,11 @@
 import { pool } from "../../config/database";
 
+type ActivityStatus =
+  | "planned"
+  | "completed"
+  | "skipped"
+  | "cancelled";
+  
 interface CreateActivityInput {
   tripStopId: number;
   activityId: number;
@@ -9,7 +15,7 @@ interface CreateActivityInput {
   sequenceNo?: number;
   estimatedCost?: number;
   actualCost?: number;
-  status?: string;
+  status?: ActivityStatus;
   notes?: string;
 }
 
@@ -22,7 +28,7 @@ interface UpdateActivityInput {
   sequenceNo?: number;
   estimatedCost?: number;
   actualCost?: number;
-  status?: string;
+  status?: ActivityStatus;
   notes?: string;
 }
 
