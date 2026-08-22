@@ -24,6 +24,18 @@ export function listTripDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+export function formatDayStamp(value: string): string {
+  const date = new Date(`${toDateKey(value)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
 export function formatLongDate(value: string): string {
   const date = new Date(`${toDateKey(value)}T00:00:00`);
   if (Number.isNaN(date.getTime())) {
@@ -58,6 +70,10 @@ export function formatTimeRange(
     return `${start} – ${end}`;
   }
   return start || end;
+}
+
+export function countTripDays(startDate: string, endDate: string): number {
+  return Math.max(listTripDays(startDate, endDate).length, 1);
 }
 
 export function formatDateRange(startDate: string, endDate: string): string {

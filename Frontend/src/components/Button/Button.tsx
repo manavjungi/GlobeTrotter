@@ -16,7 +16,7 @@ export function Button({
     <button
       type={type}
       disabled={disabled || isLoading}
-      className={`flex h-12 w-full items-center justify-center rounded-md bg-brand text-sm font-semibold tracking-[0.18em] text-white uppercase transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70 ${className}`}
+      className={`flex h-11 w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-semibold text-white transition duration-200 hover:bg-brand-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 ${className}`}
       {...props}
     >
       {isLoading ? "Please wait..." : children}

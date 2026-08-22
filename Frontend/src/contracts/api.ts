@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TransportMode, TripActivityStatus, TripStatus, TripVisibility, UserRole } from "@/types/enums";
 
 /** Postgres DATE / timestamptz → YYYY-MM-DD for date inputs and display. */
 const sqlDateSchema = z.preprocess((value) => {
@@ -22,7 +23,7 @@ export const userSchema = z
     phone: z.string().nullable().optional(),
     country_id: z.coerce.number().nullable().optional(),
     city_id: z.coerce.number().nullable().optional(),
-    role: z.string().optional(),
+    role: z.enum(UserRole).optional(),
     is_active: z.boolean().optional(),
   })
   .passthrough();
@@ -66,7 +67,8 @@ export const tripSchema = z
     start_date: sqlDateSchema,
     end_date: sqlDateSchema,
     budget: z.coerce.number().nullable().optional(),
-    visibility: z.string().nullable().optional(),
+    status: z.enum(TripStatus).nullable().optional(),
+    visibility: z.enum(TripVisibility).nullable().optional(),
     stop_count: z.coerce.number().optional().default(0),
     activity_count: z.coerce.number().optional().default(0),
   })
@@ -78,7 +80,7 @@ export const createTripRequestSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   budget: z.number().nonnegative().optional(),
-  visibility: z.enum(["private", "link_only", "public"]).optional(),
+  visibility: z.enum(TripVisibility).optional(),
 });
 
 export const tripResponseSchema = z.object({
@@ -108,6 +110,7 @@ export const tripStopSchema = z
     city_name: z.string().nullable().optional(),
     country_name: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    transport_mode: z.enum(TransportMode).nullable().optional(),
   })
   .passthrough();
 
@@ -121,7 +124,7 @@ export const tripActivitySchema = z
     start_time: z.string().nullable().optional(),
     end_time: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
-    status: z.string().nullable().optional(),
+    status: z.enum(TripActivityStatus).nullable().optional(),
     activity_name: z.string().nullable().optional(),
     city_name: z.string().nullable().optional(),
     estimated_cost: z.coerce.number().nullable().optional(),
@@ -166,7 +169,7 @@ export const createActivityRequestSchema = z.object({
   endTime: z.string().optional(),
   notes: z.string().max(5000).optional(),
   estimatedCost: z.number().nonnegative().optional(),
-  status: z.string().optional(),
+  status: z.enum(TripActivityStatus).optional(),
 });
 
 export type User = z.infer<typeof userSchema>;
