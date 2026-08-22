@@ -4,14 +4,11 @@ import {
 } from "express";
 
 import {
-
-
-
-  
   getCities
 } from "./city.service";
 
 export async function getMine(
+  
   req: Request,
   res: Response
 ): Promise<void> {
