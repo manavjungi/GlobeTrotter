@@ -1,2 +1,12 @@
 node_modules
+dist
+coverage
 .env
+.env.*.local
+*.tsbuildinfo
+*.log
+npm-debug.log*
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
