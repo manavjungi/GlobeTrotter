@@ -20,8 +20,15 @@ api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      clearAccessToken();
+      const requestUrl = error.config?.url ?? "";
+      const isCredentialRequest =
+        requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+      if (!isCredentialRequest) {
+        clearAccessToken();
+      }
     }
+
     return Promise.reject(error);
   },
 );

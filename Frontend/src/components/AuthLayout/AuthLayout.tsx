@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import airplane from "@/assets/auth/airplane.png";
 import hero from "@/assets/auth/hero.png";
@@ -73,11 +74,13 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
   );
 }
 
-interface SocialLoginRowProps {
-  onUnavailable: (provider: string) => void;
-}
+export function SocialLoginRow() {
+  const [notice, setNotice] = useState("");
 
-export function SocialLoginRow({ onUnavailable }: SocialLoginRowProps) {
+  function showUnavailable(provider: string) {
+    setNotice(`${provider} login is not available yet. Please use email instead.`);
+  }
+
   return (
     <div className="mt-6">
       <div className="flex items-center gap-4 text-[#c4c4c4]">
@@ -86,16 +89,21 @@ export function SocialLoginRow({ onUnavailable }: SocialLoginRowProps) {
         <span className="h-px flex-1 bg-[#d9d9d9]" />
       </div>
       <div className="mt-5 flex items-center justify-center gap-5">
-        <SocialButton label="Google" onClick={() => onUnavailable("Google")}>
+        <SocialButton label="Google" onClick={() => showUnavailable("Google")}>
           <GoogleLogo />
         </SocialButton>
-        <SocialButton label="Facebook" onClick={() => onUnavailable("Facebook")}>
+        <SocialButton label="Facebook" onClick={() => showUnavailable("Facebook")}>
           <FacebookLogo />
         </SocialButton>
-        <SocialButton label="Apple" onClick={() => onUnavailable("Apple")}>
+        <SocialButton label="Apple" onClick={() => showUnavailable("Apple")}>
           <AppleLogo />
         </SocialButton>
       </div>
+      {notice ? (
+        <p role="status" className="mt-4 text-center text-xs text-[#8a8a8a]">
+          {notice}
+        </p>
+      ) : null}
     </div>
   );
 }
