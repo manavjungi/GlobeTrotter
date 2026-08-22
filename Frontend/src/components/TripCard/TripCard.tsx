@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { CalendarIcon, PinIcon } from "@/components/Input/icons";
 import type { Trip } from "@/types/trip";
 import { countTripDays, formatDateRange } from "@/utils/date";
-import { tripCoverStyle } from "@/utils/tripVisual";
+import { tripCoverPhoto } from "@/utils/tripVisual";
 
 interface TripCardProps {
   trip: Trip;
@@ -23,11 +23,11 @@ export function TripCard({ trip, onDelete, isDeleting = false, layout = "default
       }`}
     >
       <div className={`relative overflow-hidden ${isPortrait ? "h-56" : "h-44"}`}>
-        <div
-          className="absolute inset-0 origin-center transition duration-300 group-hover:scale-105"
-          style={tripCoverStyle(trip.name)}
+        <img
+          src={tripCoverPhoto(trip.name)}
+          alt=""
+          className="absolute inset-0 h-full w-full origin-center object-cover transition duration-300 group-hover:scale-105"
         />
-        <div className="trip-cover-texture absolute inset-0 origin-center opacity-70 transition duration-300 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/60 to-transparent" />
         {trip.visibility ? (
           <span className="absolute top-3 right-3 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">

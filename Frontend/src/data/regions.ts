@@ -1,8 +1,4 @@
-import ahmedabad from "@/assets/regions/ahmedabad.png";
-import bhuj from "@/assets/regions/bhuj.png";
-import gandhinagar from "@/assets/regions/gandhinagar.png";
-import surat from "@/assets/regions/surat.png";
-import vadodara from "@/assets/regions/vadodara.png";
+import { resolveCityPhoto } from "@/utils/cityPhoto";
 
 export interface RegionalCity {
   id: number;
@@ -31,7 +27,6 @@ export const REGIONAL_DESTINATIONS: RegionalCity[] = [
     longitude: 72.5714,
     popularity: 95,
     featured: true,
-    image: ahmedabad,
   },
   {
     id: 2,
@@ -45,7 +40,6 @@ export const REGIONAL_DESTINATIONS: RegionalCity[] = [
     longitude: 72.8311,
     popularity: 88,
     featured: false,
-    image: surat,
   },
   {
     id: 3,
@@ -58,7 +52,6 @@ export const REGIONAL_DESTINATIONS: RegionalCity[] = [
     longitude: 73.1812,
     popularity: 85,
     featured: true,
-    image: vadodara,
   },
   {
     id: 4,
@@ -84,7 +77,6 @@ export const REGIONAL_DESTINATIONS: RegionalCity[] = [
     longitude: 72.6369,
     popularity: 80,
     featured: true,
-    image: gandhinagar,
   },
   {
     id: 6,
@@ -232,6 +224,8 @@ export const REGIONAL_DESTINATIONS: RegionalCity[] = [
     longitude: 69.6669,
     popularity: 82,
     featured: true,
-    image: bhuj,
   },
-];
+].map((city) => ({
+  ...city,
+  image: resolveCityPhoto(city.name, city.slug),
+}));
