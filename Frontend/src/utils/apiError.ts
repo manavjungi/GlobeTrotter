@@ -1,33 +1,65 @@
 import axios from "axios";
 
-interface FastApiValidationItem {
-  loc?: Array<string | number>;
-  msg?: string;
-  type?: string;
+interface ApiErrorBody {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, unknown>;
 }
 
-function isValidationItem(value: unknown): value is FastApiValidationItem {
-  return typeof value === "object" && value !== null && "msg" in value;
+function isApiErrorBody(value: unknown): value is ApiErrorBody {
+  return typeof value === "object" && value !== null;
+}
+
+function collectFieldErrors(errors: Record<string, unknown>): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  for (const [field, value] of Object.entries(errors)) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      result[field] = value;
+    }
+  }
+
+  return result;
+}
+
+export function getApiFieldErrors(error: unknown): Record<string, string> {
+  if (!axios.isAxiosError(error) || !isApiErrorBody(error.response?.data)) {
+    return {};
+  }
+
+  const { errors } = error.response.data;
+  if (!errors) {
+    return {};
+  }
+
+  return collectFieldErrors(errors);
 }
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
+    const data = error.response?.data;
 
-    if (typeof detail === "string" && detail.trim().length > 0) {
-      return detail;
-    }
+    if (isApiErrorBody(data)) {
+      if (typeof data.message === "string" && data.message.trim().length > 0) {
+        return data.message;
+      }
 
-    if (Array.isArray(detail) && detail.length > 0 && isValidationItem(detail[0])) {
-      return detail[0].msg ?? "Please check the form and try again.";
+      const fieldMessages = Object.values(getApiFieldErrors(error));
+      if (fieldMessages.length > 0) {
+        return fieldMessages.join(". ");
+      }
     }
 
     if (error.response?.status === 401) {
       return "Invalid email or password.";
     }
 
+    if (error.response?.status === 403) {
+      return "Account is inactive.";
+    }
+
     if (error.response?.status === 409) {
-      return "An account with this email already exists.";
+      return "Email or username already exists.";
     }
 
     if (!error.response) {

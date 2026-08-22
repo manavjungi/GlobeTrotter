@@ -9,7 +9,7 @@ import { ErrorMessage } from "@/components/ErrorMessage/ErrorMessage";
 import { AuthField } from "@/components/Input/AuthField";
 import { EnvelopeIcon, LockIcon } from "@/components/Input/icons";
 import { useAuth } from "@/hooks/useAuth";
-import { getApiErrorMessage } from "@/utils/apiError";
+import { getApiErrorMessage, getApiFieldErrors } from "@/utils/apiError";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -27,6 +27,7 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,6 +44,13 @@ export function LoginPage() {
       await login(values);
       navigate("/dashboard", { replace: true });
     } catch (error) {
+      const fieldErrors = getApiFieldErrors(error);
+      if (fieldErrors.email) {
+        setError("email", { type: "server", message: fieldErrors.email });
+      }
+      if (fieldErrors.password) {
+        setError("password", { type: "server", message: fieldErrors.password });
+      }
       setFormError(getApiErrorMessage(error));
     }
   }
@@ -54,7 +62,7 @@ export function LoginPage() {
           label="Email Id"
           type="email"
           autoComplete="email"
-          placeholder="thisuix@mail.com"
+          placeholder="john@example.com"
           icon={<EnvelopeIcon />}
           error={errors.email?.message}
           {...register("email")}
@@ -89,11 +97,7 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <SocialLoginRow
-        onUnavailable={(provider) =>
-          setNotice(`${provider} login is not available yet. Please use email instead.`)
-        }
-      />
+      <SocialLoginRow />
 
       <p className="mt-8 text-center text-sm text-[#9a9a9a]">
         Don&apos;t have account?{" "}

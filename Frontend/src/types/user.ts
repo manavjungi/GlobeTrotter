@@ -1,19 +1,16 @@
-export type UserRole = "USER" | "ADMIN";
+export type UserRole = "user" | "admin";
 
 export interface User {
   id: number;
-  first_name: string;
-  last_name: string;
+  username: string;
   email: string;
+  firstName: string;
+  lastName: string;
   phone?: string | null;
-  city?: string | null;
-  country?: string | null;
-  profile_image?: string | null;
-  additional_information?: string | null;
+  countryId?: number | null;
+  cityId?: number | null;
   role: UserRole;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  isActive?: boolean;
 }
 
 export interface LoginRequest {
@@ -22,18 +19,23 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  first_name: string;
-  last_name: string;
+  username: string;
   email: string;
   password: string;
-  phone?: string;
-  city?: string;
-  country?: string;
-  additional_information?: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  countryId: number;
+  cityId: number;
 }
 
-export interface AuthResponse {
-  access_token: string;
-  token_type: string;
+export interface AuthPayload {
   user: User;
+  token: string;
+}
+
+export interface ApiSuccess<T> {
+  success: boolean;
+  message?: string;
+  data: T;
 }
