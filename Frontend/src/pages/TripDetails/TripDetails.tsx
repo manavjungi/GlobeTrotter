@@ -8,7 +8,7 @@ import { ErrorMessage, SuccessMessage } from "@/components/ErrorMessage/ErrorMes
 import { AuthField, AuthTextArea } from "@/components/Input/AuthField";
 import { TripBudgetCard } from "@/components/Budget/TripBudgetCard";
 import { TripDetailsSkeleton } from "@/components/Loader/Loader";
-import { tripCoverStyle } from "@/utils/tripVisual";
+import { tripCoverPhoto } from "@/utils/tripVisual";
 import type { Trip, TripActivity, TripBudget, TripExpense, TripStop } from "@/contracts/api";
 import { ExpensesPanel } from "@/pages/TripDetails/ExpensesPanel";
 import { TripActivityStatus } from "@/types/enums";
@@ -332,8 +332,11 @@ export function TripDetailsPage() {
       ) : null}
 
       <header className="relative mt-3 overflow-hidden rounded-3xl px-6 py-12 text-white sm:px-10">
-        <div className="absolute inset-0" style={tripCoverStyle(trip.name)} />
-        <div className="trip-cover-texture absolute inset-0" />
+        <img
+          src={tripCoverPhoto(destinationNames[0] || trip.name)}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -397,12 +400,24 @@ export function TripDetailsPage() {
               const transport = stop.transport_cost ?? 0;
               const stay = stop.accommodation_cost ?? 0;
               return (
-                <li key={stop.id} className="rounded-xl bg-white p-4 text-sm ring-1 ring-line">
-                  <p className="font-medium text-ink">{stop.city_name || `City ${stop.city_id}`}</p>
-                  <p className="mt-2 text-muted">Transport {formatMoney(transport)}</p>
-                  <p className="text-muted">Accommodation {formatMoney(stay)}</p>
-                  <p className="text-muted">Activities {formatMoney(activityCost)}</p>
-                  <p className="mt-2 font-medium text-ink">Total {formatMoney(transport + stay + activityCost)}</p>
+                <li key={stop.id} className="overflow-hidden rounded-xl bg-white text-sm ring-1 ring-line">
+                  <div className="relative h-28">
+                    <img
+                      src={tripCoverPhoto(stop.city_name || trip.name)}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink/70 to-transparent" />
+                    <p className="absolute bottom-3 left-4 font-display text-lg font-semibold text-white">
+                      {stop.city_name || `City ${stop.city_id}`}
+                    </p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-muted">Transport {formatMoney(transport)}</p>
+                    <p className="text-muted">Accommodation {formatMoney(stay)}</p>
+                    <p className="text-muted">Activities {formatMoney(activityCost)}</p>
+                    <p className="mt-2 font-medium text-ink">Total {formatMoney(transport + stay + activityCost)}</p>
+                  </div>
                 </li>
               );
             })}

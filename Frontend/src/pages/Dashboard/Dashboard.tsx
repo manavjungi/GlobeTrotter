@@ -15,7 +15,7 @@ import type { TripBudget } from "@/contracts/api";
 import type { Trip } from "@/types/trip";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { countTripDays, formatDateRange } from "@/utils/date";
-import { tripCoverStyle } from "@/utils/tripVisual";
+import { tripCoverPhoto } from "@/utils/tripVisual";
 
 type CatalogFilter = "all" | "featured" | "upcoming" | "past";
 type CatalogSort = "name" | "popularity" | "soonest" | "latest";
@@ -286,7 +286,12 @@ export function DashboardPage() {
       {!tripsLoading && !tripsError && nextTrip ? (
         <section className="mt-10 overflow-hidden rounded-3xl bg-white ring-1 ring-line">
           <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
-            <div className="relative min-h-52" style={tripCoverStyle(nextTrip.name)}>
+            <div className="relative min-h-52 overflow-hidden">
+              <img
+                src={tripCoverPhoto(nextTrip.name)}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-ink/70 to-ink/10" />
               <p className="absolute top-5 left-5 text-[11px] font-semibold tracking-[0.16em] text-white/80 uppercase">
                 Your next adventure
@@ -450,15 +455,11 @@ function RegionalCard({
         isActive ? "ring-2 ring-brand" : "ring-line"
       }`}
     >
-      {city.image ? (
-        <img
-          src={city.image}
-          alt=""
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-        />
-      ) : (
-        <span className="absolute inset-0" style={tripCoverStyle(city.name)} />
-      )}
+      <img
+        src={city.image || tripCoverPhoto(city.name, city.slug)}
+        alt=""
+        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+      />
       <span className="absolute inset-0 bg-gradient-to-t from-ink/75 to-transparent" />
       {city.featured ? (
         <span className="absolute top-2 right-2 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
