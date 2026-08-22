@@ -127,3 +127,109 @@ export async function getTripById(
 
   return result.rows[0] ?? null;
 }
+
+export async function updateTrip(
+  userId: number,
+  tripId: number,
+  input: UpdateTripInput
+) {
+  const existingTrip =
+    await getTripById(
+      userId,
+      tripId
+    );
+
+  if (!existingTrip) {
+    throw new Error(
+      "Trip not found"
+    );
+  }
+
+  const name =
+    input.name ??
+    existingTrip.name;
+
+  const description =
+    input.description ??
+    existingTrip.description;
+
+  const startDate =
+    input.startDate ??
+    existingTrip.start_date;
+
+  const endDate =
+    input.endDate ??
+    existingTrip.end_date;
+
+  const budget =
+    input.budget ??
+    existingTrip.budget;
+
+  const currencyId =
+    input.currencyId ??
+    existingTrip.currency_id;
+
+  const visibility =
+    input.visibility ??
+    existingTrip.visibility;
+
+  if (
+    new Date(endDate) <
+    new Date(startDate)
+  ) {
+    throw new Error(
+      "End date cannot be before start date"
+    );
+  }
+
+  const result = await pool.query(
+    `
+      UPDATE trips
+      SET
+        name = $1,
+        description = $2,
+        start_date = $3,
+        end_date = $4,
+        budget = $5,
+        currency_id = $6,
+        visibility = $7,
+        updated_at = NOW()
+      WHERE id = $8
+        AND owner_id = $9
+      RETURNING *
+    `,
+    [
+      name,
+      description,
+      startDate,
+      endDate,
+      budget,
+      currencyId,
+      visibility,
+      tripId,
+      userId
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function deleteTrip(
+  userId: number,
+  tripId: number
+): Promise<boolean> {
+  const result = await pool.query(
+    `
+      DELETE FROM trips
+      WHERE id = $1
+        AND owner_id = $2
+      RETURNING id
+    `,
+    [
+      tripId,
+      userId
+    ]
+  );
+
+  return result.rowCount === 1;
+}
