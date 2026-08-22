@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
@@ -9,13 +10,14 @@ import { AuthField, AuthTextArea } from "@/components/Input/AuthField";
 import { SearchIcon } from "@/components/Input/icons";
 import { Loader } from "@/components/Loader/Loader";
 import type { CatalogActivity, CatalogCity } from "@/contracts/api";
+import { REGIONAL_DESTINATIONS } from "@/data/regions";
 import { searchActivities, searchCities } from "@/services/catalogApi";
 import { createTripStop } from "@/services/itineraryApi";
 import { createTrip, getTripById, updateTrip } from "@/services/tripApi";
 import { TripVisibility } from "@/types/enums";
 import type { CreateTripRequest } from "@/types/trip";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { tripCoverStyle } from "@/utils/tripVisual";
+import { resolveCityPhoto } from "@/utils/cityPhoto";
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -249,47 +251,81 @@ export function CreateTripPage() {
     }
   }
 
+  const fallbackCities = REGIONAL_DESTINATIONS.slice(0, 6).map((city) => ({
+    id: city.id,
+    name: city.name,
+    slug: city.slug,
+    short_description: city.highlights,
+    image_url: city.image,
+    country_name: city.state,
+  }));
+  const placeCards = suggestedCities.length > 0 ? suggestedCities.slice(0, 6) : fallbackCities;
+
+  function pickPlace(city: { id: number; name: string }) {
+    const match = suggestedCities.find((item) => item.id === city.id || item.name === city.name);
+    if (match) {
+      selectCity(match);
+      return;
+    }
+    setPlaceQuery(city.name);
+    setPlaceOpen(true);
+    if (!nameTouched) {
+      setValue("name", city.name, { shouldValidate: true });
+    }
+  }
+
+  const cityCards = placeCards.slice(0, 4).map((city) => ({
+    key: `city-${city.id}`,
+    title: city.name,
+    subtitle: city.short_description || city.country_name || "Place",
+    photo: resolveCityPhoto(city.name, city.slug, city.image_url),
+    onClick: () => pickPlace(city),
+  }));
+  const activityCards = suggestedActivities.slice(0, 2).map((activity) => ({
+    key: `activity-${activity.id}`,
+    title: activity.name,
+    subtitle: activity.category_name || activity.description || "Activity",
+    photo: resolveCityPhoto(activity.name, activity.slug, activity.image_url),
+    onClick: undefined as (() => void) | undefined,
+  }));
+  const extraCities = placeCards.slice(cityCards.length).map((city) => ({
+    key: `city-${city.id}`,
+    title: city.name,
+    subtitle: city.short_description || city.country_name || "Place",
+    photo: resolveCityPhoto(city.name, city.slug, city.image_url),
+    onClick: () => pickPlace(city),
+  }));
+  const suggestionCards = [...cityCards, ...activityCards, ...extraCities].slice(0, 6);
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
       <p className="text-sm text-muted">
         <Link to="/trips" className="text-brand hover:underline">
           My Trips
         </Link>
         <span>{isEdit ? " / Edit trip" : " / Create trip"}</span>
       </p>
-      <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
-        {isEdit ? "Edit your trip" : "Plan a new trip"}
-      </h1>
-      <p className="mt-2 text-sm text-muted">
-        {isEdit
-          ? "Update the trip details. Cities, stops, and activities are managed later."
-          : "Choose dates and a place. Suggestions below come from the city and activity catalog."}
-      </p>
 
       {isLoadingTrip ? <Loader label="Loading trip..." /> : null}
 
       {!isLoadingTrip ? (
-        <form className="mt-8 space-y-8" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <section className="space-y-5 rounded-2xl bg-white p-6 shadow-[var(--shadow-card)] ring-1 ring-line sm:p-8">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AuthField
-                label="Start Date"
+        <form className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:p-6" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <h1 className="font-display text-3xl font-semibold text-ink">
+            {isEdit ? "Edit your trip" : "Plan a new trip"}
+          </h1>
+
+          <div className="mt-4 max-w-2xl space-y-2.5">
+            <FormRow label="Start Date" htmlFor="startDate">
+              <input
+                id="startDate"
                 type="date"
-                error={errors.startDate?.message}
+                className={inputClass}
                 {...register("startDate")}
               />
-              <AuthField
-                label="End Date"
-                type="date"
-                error={errors.endDate?.message}
-                {...register("endDate")}
-              />
-            </div>
+              {errors.startDate ? <p className="mt-1 text-xs text-red-600">{errors.startDate.message}</p> : null}
+            </FormRow>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink" htmlFor="place-search">
-                Select a place
-              </label>
+            <FormRow label="Select a Place" htmlFor="place-search">
               <div className="relative">
                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
                   <SearchIcon />
@@ -305,21 +341,28 @@ export function CreateTripPage() {
                   }}
                   onFocus={() => setPlaceOpen(true)}
                   placeholder="Search cities, e.g. Goa"
-                  className="h-11 w-full rounded-xl border border-line bg-white pr-4 pl-10 text-sm text-ink outline-none placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  className={`${inputClass} pl-10`}
                   autoComplete="off"
                 />
                 {placeOpen && cityResults.length > 0 ? (
-                  <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl bg-white py-1 shadow-[var(--shadow-hover)] ring-1 ring-line">
+                  <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg bg-white py-1 shadow-[var(--shadow-hover)] ring-1 ring-line">
                     {cityResults.map((city) => (
                       <li key={city.id}>
                         <button
                           type="button"
-                          className="flex w-full flex-col px-4 py-2.5 text-left hover:bg-brand-wash"
+                          className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-brand-wash"
                           onClick={() => selectCity(city)}
                         >
-                          <span className="text-sm font-medium text-ink">{city.name}</span>
-                          <span className="text-xs text-muted">
-                            {city.country_name || city.short_description || city.slug}
+                          <img
+                            src={resolveCityPhoto(city.name, city.slug, city.image_url)}
+                            alt=""
+                            className="h-9 w-9 rounded-md object-cover"
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-ink">{city.name}</span>
+                            <span className="block text-xs text-muted">
+                              {city.country_name || city.short_description || city.slug}
+                            </span>
                           </span>
                         </button>
                       </li>
@@ -327,32 +370,39 @@ export function CreateTripPage() {
                   </ul>
                 ) : null}
               </div>
-              {selectedCity ? (
-                <p className="mt-2 text-sm text-muted">
-                  Selected: <span className="font-medium text-ink">{selectedCity.name}</span>
-                </p>
-              ) : (
-                <p className="mt-2 text-xs text-muted">Optional. Selecting a place adds it as the first destination.</p>
-              )}
-            </div>
+            </FormRow>
 
-            <AuthField
-              label="Trip Name"
-              placeholder="Summer in Japan"
-              error={errors.name?.message}
-              {...register("name", {
-                onChange: () => setNameTouched(true),
-              })}
-            />
+            <FormRow label="Trip Name" htmlFor="trip-name">
+              <input
+                id="trip-name"
+                placeholder="Summer in Japan"
+                className={inputClass}
+                {...register("name", {
+                  onChange: () => setNameTouched(true),
+                })}
+              />
+              {errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message}</p> : null}
+            </FormRow>
 
+            <FormRow label="End Date" htmlFor="endDate">
+              <input
+                id="endDate"
+                type="date"
+                className={inputClass}
+                {...register("endDate")}
+              />
+              {errors.endDate ? <p className="mt-1 text-xs text-red-600">{errors.endDate.message}</p> : null}
+            </FormRow>
+          </div>
+
+          <div className="mt-3 max-w-2xl grid grid-cols-1 gap-3 sm:grid-cols-2">
             <AuthTextArea
               label="Description"
-              rows={3}
+              rows={2}
               placeholder="What is this trip about?"
               error={errors.description?.message}
               {...register("description")}
             />
-
             <AuthField
               label="Budget Limit"
               type="number"
@@ -363,90 +413,55 @@ export function CreateTripPage() {
               error={errors.budget?.message}
               {...register("budget")}
             />
+          </div>
 
-            {formError ? <ErrorMessage message={formError} /> : null}
+          {formError ? <div className="mt-3"><ErrorMessage message={formError} /></div> : null}
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Link
-                to="/trips"
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-line px-6 text-sm font-medium text-ink hover:bg-slate-50"
-              >
-                Cancel
-              </Link>
-              <Button type="submit" isLoading={isSubmitting} className="sm:w-48">
-                {isSubmitting ? (isEdit ? "Saving..." : "Creating trip...") : isEdit ? "Save Trip" : "Create Trip"}
-              </Button>
-            </div>
-          </section>
+          <div className="mt-4 flex justify-end gap-3">
+            <Link
+              to="/trips"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-line px-5 text-sm font-medium text-ink hover:bg-slate-50"
+            >
+              Cancel
+            </Link>
+            <Button type="submit" isLoading={isSubmitting} className="w-40">
+              {isSubmitting ? (isEdit ? "Saving..." : "Creating trip...") : isEdit ? "Save Trip" : "Create Trip"}
+            </Button>
+          </div>
 
           {!isEdit ? (
-            <section>
-              <h2 className="font-display text-2xl font-semibold text-ink">
-                Suggestions for places to visit / activities
+            <section className="mt-6 border-t border-line pt-4">
+              <h2 className="font-display text-xl font-semibold text-ink">
+                Suggestion for Places to Visit / Activities
               </h2>
-              <p className="mt-1 text-sm text-muted">
-                {selectedCity
-                  ? `Places and activities related to ${selectedCity.name}.`
-                  : "Pick a place to plan around, or browse activities."}
-              </p>
-
-              {catalogLoading ? <Loader label="Loading suggestions..." /> : null}
               {catalogError ? (
-                <div className="mt-4">
+                <div className="mt-3">
                   <ErrorMessage message={catalogError} />
                 </div>
               ) : null}
-
-              {!catalogLoading && !catalogError ? (
-                <div className="mt-5 space-y-8">
-                  <div>
-                    <h3 className="text-sm font-semibold tracking-wide text-muted uppercase">Places</h3>
-                    {suggestedCities.length === 0 ? (
-                      <p className="mt-3 text-sm text-muted">No places match that search.</p>
-                    ) : (
-                      <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {suggestedCities.map((city) => (
-                          <li key={city.id}>
-                            <SuggestionCard
-                              title={city.name}
-                              subtitle={city.short_description || city.country_name || "Destination"}
-                              imageUrl={city.image_url}
-                              selected={selectedCity?.id === city.id}
-                              onClick={() => selectCity(city)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold tracking-wide text-muted uppercase">Activities</h3>
-                    {suggestedActivities.length === 0 ? (
-                      <p className="mt-3 text-sm text-muted">No activities found yet.</p>
-                    ) : (
-                      <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {suggestedActivities.map((activity) => (
-                          <li key={activity.id}>
-                            <SuggestionCard
-                              title={activity.name}
-                              subtitle={
-                                activity.category_name ||
-                                activity.description ||
-                                (activity.is_free ? "Free" : "Activity")
-                              }
-                              meta={activityMeta(activity)}
-                              imageUrl={activity.image_url}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+              {catalogLoading ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="aspect-[3/4] animate-pulse rounded-xl bg-slate-200" />
+                  ))}
                 </div>
-              ) : null}
-              {!isEdit && startDate && endDate ? (
-                <p className="mt-4 text-xs text-muted">
+              ) : (
+                <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {suggestionCards.map((card) => (
+                    <li key={card.key}>
+                      <SuggestionCard
+                        title={card.title}
+                        subtitle={card.subtitle}
+                        photo={card.photo}
+                        selected={selectedCity?.name === card.title}
+                        onClick={card.onClick}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {startDate && endDate ? (
+                <p className="mt-3 text-xs text-muted">
                   Dates {startDate} – {endDate} will be used if you add the selected place as a stop.
                 </p>
               ) : null}
@@ -458,72 +473,63 @@ export function CreateTripPage() {
   );
 }
 
-function activityMeta(activity: CatalogActivity): string | undefined {
-  const parts: string[] = [];
-  if (activity.duration_minutes) {
-    parts.push(`${activity.duration_minutes} min`);
-  }
-  if (activity.is_free) {
-    parts.push("Free");
-  } else if (activity.estimated_cost != null) {
-    parts.push(`${activity.currency || "INR"} ${activity.estimated_cost}`);
-  }
-  if (activity.rating != null) {
-    parts.push(`${activity.rating}★`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : undefined;
+const inputClass =
+  "h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20";
+
+function FormRow({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 items-center gap-1.5 sm:grid-cols-[10.5rem_minmax(0,1fr)]">
+      <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
+        {label}
+      </label>
+      <div>{children}</div>
+    </div>
+  );
 }
 
 function SuggestionCard({
   title,
   subtitle,
-  meta,
-  imageUrl,
+  photo,
   selected = false,
   onClick,
 }: {
   title: string;
   subtitle: string;
-  meta?: string;
-  imageUrl?: string | null;
+  photo: string;
   selected?: boolean;
   onClick?: () => void;
 }) {
   const content = (
     <>
-      <div className="relative h-36 overflow-hidden">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="absolute inset-0" style={tripCoverStyle(title)} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/55 to-transparent" />
-      </div>
-      <div className="p-3">
-        <p className="font-display text-lg font-semibold text-ink">{title}</p>
-        <p className="mt-1 line-clamp-2 text-sm text-muted">{subtitle}</p>
-        {meta ? <p className="mt-1 text-xs text-muted">{meta}</p> : null}
-      </div>
+      <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+      <span className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/10 to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 p-3">
+        <span className="block font-display text-lg font-semibold text-white">{title}</span>
+        <span className="mt-0.5 block line-clamp-1 text-xs text-white/80">{subtitle}</span>
+      </span>
     </>
   );
 
+  const className = `group relative aspect-[3/4] w-full overflow-hidden rounded-xl text-left ring-1 transition duration-200 hover:-translate-y-0.5 ${
+    selected ? "ring-2 ring-brand" : "ring-line"
+  }`;
+
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`w-full overflow-hidden rounded-2xl bg-white text-left shadow-[var(--shadow-card)] ring-1 transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)] ${
-          selected ? "ring-2 ring-brand" : "ring-line"
-        }`}
-      >
+      <button type="button" onClick={onClick} className={className}>
         {content}
       </button>
     );
   }
 
-  return (
-    <article className="overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-card)] ring-1 ring-line">
-      {content}
-    </article>
-  );
+  return <article className={className}>{content}</article>;
 }
