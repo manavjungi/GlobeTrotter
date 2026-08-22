@@ -9,6 +9,10 @@ import tripRoutes
 import stopRoutes
   from "../modules/trips/stop.routes";
 
+import activityRoutes
+  from "../modules/trips/activity.routes";
+
+
 const router = Router();
 
 router.use(
@@ -24,6 +28,11 @@ router.use(
 router.use(
   "/trips",
   stopRoutes
+);
+
+router.use(
+  "/trips",
+  activityRoutes
 );
 
 export default router;
